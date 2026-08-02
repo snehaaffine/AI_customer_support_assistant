@@ -90,7 +90,8 @@ router.post(
           session.id,
           content,
           categoryLabel,
-          categorySlug
+          categorySlug,
+          session.orderFailureCount
         );
 
       for await (const chunk of stream) {

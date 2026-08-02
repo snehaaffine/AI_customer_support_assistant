@@ -4,10 +4,12 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
 import { ChatError } from "./services/chat.service.js";
 import { EscalationError } from "./services/escalation.service.js";
+import { AdminError } from "./services/admin.service.js";
 import { SessionError } from "./services/session.service.js";
 import categoriesRouter from "./routes/categories.js";
 import chatRouter from "./routes/chat.js";
 import escalationRouter from "./routes/escalation.js";
+import adminRouter from "./routes/admin.js";
 import sessionsRouter from "./routes/sessions.js";
 import { uploadDir } from "./lib/upload.js";
 
@@ -51,6 +53,7 @@ export function createApp() {
   app.use("/api/sessions", sessionsRouter);
   app.use("/api/sessions", escalationRouter);
   app.use("/api/chat", chatLimiter, chatRouter);
+  app.use("/api/admin", adminRouter);
 
   app.use(
     (
@@ -67,6 +70,11 @@ export function createApp() {
       }
 
       if (err instanceof EscalationError) {
+        res.status(err.statusCode).json({ error: err.message });
+        return;
+      }
+
+      if (err instanceof AdminError) {
         res.status(err.statusCode).json({ error: err.message });
         return;
       }

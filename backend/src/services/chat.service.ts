@@ -3,6 +3,7 @@ import { getSystemConfig } from "../lib/db-helpers.js";
 import { prisma } from "../lib/prisma.js";
 import { sanitizeMessage } from "../lib/sanitize.js";
 import { streamChatCompletion } from "./ai.service.js";
+import { buildLiveContext } from "./context.service.js";
 import {
   findCachedAnswer,
   isCacheableAnswer,
@@ -128,12 +129,14 @@ export async function generateChatResponse(
   sessionId: string,
   userMessage: string,
   categoryLabel?: string,
-  categorySlug?: string
+  categorySlug?: string,
+  orderFailureCount?: number
 ): Promise<ChatGenerationResult> {
   const config = await getSystemConfig();
   const escalate = await shouldEscalate({
     message: userMessage,
     category: categorySlug ? { slug: categorySlug } : null,
+    failedAttempts: orderFailureCount,
   });
 
   const bypassCache = shouldBypassCache(userMessage);
@@ -161,10 +164,23 @@ export async function generateChatResponse(
     content: m.content,
   }));
 
+  const recentUserMessages = history
+    .filter((m) => m.role === MessageRole.USER)
+    .map((m) => m.content)
+    .slice(-5);
+
+  const liveContext = await buildLiveContext(
+    sessionId,
+    userMessage,
+    recentUserMessages,
+    categorySlug
+  );
+
   const generator = streamChatCompletion(
     config.systemPrompt,
     messages,
-    categoryLabel
+    categoryLabel,
+    liveContext
   );
 
   if (bypassCache) {

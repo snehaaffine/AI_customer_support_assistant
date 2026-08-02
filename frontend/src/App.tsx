@@ -1,6 +1,11 @@
 import ChatWidget from "./components/ChatWidget.js";
+import AdminPage from "./pages/AdminPage.js";
 
 export default function App() {
+  if (window.location.pathname.startsWith("/admin")) {
+    return <AdminPage />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-brand-50 to-gray-100">
       {/* Demo storefront backdrop */}

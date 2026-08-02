@@ -9,14 +9,19 @@ export interface ChatMessage {
 export async function* streamChatCompletion(
   systemPrompt: string,
   messages: ChatMessage[],
-  categoryLabel?: string
+  categoryLabel?: string,
+  liveContext?: string
 ): AsyncGenerator<string> {
   assertAzureOpenAiConfig();
 
   const client = getAzureOpenAIClient();
-  const systemContent = categoryLabel
+  let systemContent = categoryLabel
     ? `${systemPrompt}\n\nThe customer selected the topic: "${categoryLabel}".`
     : systemPrompt;
+
+  if (liveContext?.trim()) {
+    systemContent += `\n\n--- Live data for this turn (use when relevant) ---\n${liveContext}`;
+  }
 
   const stream = await client.chat.completions.create({
     model: env.azureOpenAiChatDeployment,

@@ -76,6 +76,19 @@ npm run db:seed      # seed admin, categories, mock data
 | `POST` | `/api/chat/:id/messages` | Send message (SSE stream) |
 | `POST` | `/api/sessions/:id/escalate` | Submit escalation (multipart: email, message, images) |
 
+### API endpoints (Phase 8 — Admin)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/admin/login` | Admin login (returns JWT) |
+| `GET` | `/api/admin/config` | Get system prompt (auth required) |
+| `PUT` | `/api/admin/config` | Update system prompt (clears cache) |
+| `GET` | `/api/admin/escalation-rules` | List escalation rules |
+| `PATCH` | `/api/admin/escalation-rules/:id` | Enable/disable or reprioritize a rule |
+| `GET` | `/api/admin/escalations` | Recent escalations |
+
+Admin UI: http://localhost:5173/admin (default credentials in `.env`: `admin` / `changeme`)
+
 ## Project Structure
 
 ```
@@ -99,8 +112,8 @@ This project is built incrementally. Each phase is a separate commit/PR:
 | 4 | Frontend chat UI | ✅ Complete |
 | 5 | Azure OpenAI integration & semantic cache | ✅ Complete |
 | 6 | Escalation flow & Resend email | ✅ Complete |
-| 7 | Order lookup & inventory integration | Pending |
-| 8 | Admin interface | Pending |
+| 7 | Order lookup & inventory integration | ✅ Complete |
+| 8 | Admin interface | ✅ Complete |
 
 ## License
 
