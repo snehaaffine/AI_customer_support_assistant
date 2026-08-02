@@ -2,6 +2,11 @@ import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
+import { ChatError } from "./services/chat.service.js";
+import { SessionError } from "./services/session.service.js";
+import categoriesRouter from "./routes/categories.js";
+import chatRouter from "./routes/chat.js";
+import sessionsRouter from "./routes/sessions.js";
 
 export function createApp() {
   const app = express();
@@ -33,8 +38,9 @@ export function createApp() {
     });
   });
 
-  // Route groups will be mounted in later phases
-  app.use("/api/chat", chatLimiter);
+  app.use("/api/categories", categoriesRouter);
+  app.use("/api/sessions", sessionsRouter);
+  app.use("/api/chat", chatLimiter, chatRouter);
 
   app.use(
     (
@@ -44,6 +50,12 @@ export function createApp() {
       _next: express.NextFunction
     ) => {
       console.error(err);
+
+      if (err instanceof SessionError || err instanceof ChatError) {
+        res.status(err.statusCode).json({ error: err.message });
+        return;
+      }
+
       res.status(500).json({ error: "Internal server error" });
     }
   );

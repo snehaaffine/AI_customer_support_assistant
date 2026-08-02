@@ -61,6 +61,17 @@ npm run db:seed      # seed admin, categories, mock data
 - Backend: http://localhost:3001
 - Health check: http://localhost:3001/api/health
 
+### API endpoints (Phase 3)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/categories` | List chat categories |
+| `POST` | `/api/sessions` | Create or resume a session |
+| `GET` | `/api/sessions/:id` | Get session details |
+| `PATCH` | `/api/sessions/:id/category` | Set session category |
+| `GET` | `/api/chat/:id/messages` | Paginated message history |
+| `POST` | `/api/chat/:id/messages` | Send message (SSE stream) |
+
 ## Project Structure
 
 ```
@@ -80,7 +91,7 @@ This project is built incrementally. Each phase is a separate commit/PR:
 |-------|-------|--------|
 | 1 | Project scaffolding | ✅ Complete |
 | 2 | Database schema & Prisma | ✅ Complete |
-| 3 | Backend core APIs | Pending |
+| 3 | Backend core APIs | ✅ Complete |
 | 4 | Frontend chat UI | Pending |
 | 5 | Claude integration & semantic cache | Pending |
 | 6 | Escalation flow & Resend email | Pending |
