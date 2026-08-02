@@ -1,22 +1,39 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { submitEscalation } from "../api/escalation.js";
 import { fetchCategories } from "../api/chat.js";
 import type { Category } from "../api/types.js";
 import { useChat } from "../hooks/useChat.js";
 import { useSession } from "../hooks/useSession.js";
 import CategoryPicker from "./CategoryPicker.js";
 import ChatInput from "./ChatInput.js";
+import EscalationDialog from "./EscalationDialog.js";
 import MessageList from "./MessageList.js";
 
 export default function ChatWidget() {
-  const { session, loading: sessionLoading, error: sessionError, selectCategory, retry } =
-    useSession();
+  const {
+    session,
+    loading: sessionLoading,
+    error: sessionError,
+    selectCategory,
+    refreshSession,
+    retry,
+  } = useSession();
   const [isOpen, setIsOpen] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [selectingCategory, setSelectingCategory] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [escalationOpen, setEscalationOpen] = useState(false);
+  const [escalationSubmitting, setEscalationSubmitting] = useState(false);
+  const [escalationError, setEscalationError] = useState<string | null>(null);
 
   const categorySelected = Boolean(session?.categoryId);
+
+  const openEscalation = useCallback(() => {
+    if (session?.escalated) return;
+    setEscalationError(null);
+    setEscalationOpen(true);
+  }, [session?.escalated]);
 
   const {
     messages,
@@ -26,7 +43,9 @@ export default function ChatWidget() {
     hasMore,
     loadOlder,
     sendMessage,
-  } = useChat(session?.id ?? null, categorySelected);
+  } = useChat(session?.id ?? null, categorySelected, {
+    onEscalationSuggested: openEscalation,
+  });
 
   useEffect(() => {
     fetchCategories()
@@ -49,7 +68,31 @@ export default function ChatWidget() {
     }
   };
 
+  const handleEscalationSubmit = async (data: {
+    customerEmail: string;
+    message: string;
+    images: File[];
+  }) => {
+    if (!session?.id) return;
+
+    setEscalationSubmitting(true);
+    setEscalationError(null);
+
+    try {
+      await submitEscalation(session.id, data);
+      setEscalationOpen(false);
+      await refreshSession();
+    } catch (err) {
+      setEscalationError(
+        err instanceof Error ? err.message : "Failed to submit escalation"
+      );
+    } finally {
+      setEscalationSubmitting(false);
+    }
+  };
+
   const showCategoryPicker = !categorySelected;
+  const chatDisabled = isTyping || Boolean(session?.escalated);
 
   if (!isOpen) {
     return (
@@ -100,10 +143,17 @@ export default function ChatWidget() {
             Customer Support
           </h1>
           <p className="text-brand-100 text-xs truncate">
-            {session?.category?.label ?? "We're here to help"}
+            {session?.escalated
+              ? "Request submitted — we'll email you"
+              : (session?.category?.label ?? "We're here to help")}
           </p>
         </div>
-        <span className="w-2 h-2 bg-green-400 rounded-full shrink-0" title="Online" />
+        {!session?.escalated && (
+          <span
+            className="w-2 h-2 bg-green-400 rounded-full shrink-0"
+            title="Online"
+          />
+        )}
         <button
           type="button"
           onClick={() => setIsOpen(false)}
@@ -127,7 +177,7 @@ export default function ChatWidget() {
       </header>
 
       {/* Body */}
-      <div className="flex flex-col flex-1 min-h-0 bg-gray-50">
+      <div className="relative flex flex-col flex-1 min-h-0 bg-gray-50">
         {sessionLoading ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-3">
             <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -158,6 +208,21 @@ export default function ChatWidget() {
               </p>
             )}
           </>
+        ) : session?.escalated ? (
+          <div className="flex flex-col flex-1 min-h-0">
+            <MessageList
+              messages={messages}
+              isTyping={false}
+              hasMore={hasMore}
+              loadingHistory={loadingHistory}
+              onLoadOlder={loadOlder}
+            />
+            <div className="shrink-0 px-4 py-3 bg-white border-t border-gray-200 text-center">
+              <p className="text-sm text-gray-600">
+                Your request has been submitted. We'll follow up by email.
+              </p>
+            </div>
+          </div>
         ) : (
           <>
             <MessageList
@@ -167,18 +232,24 @@ export default function ChatWidget() {
               loadingHistory={loadingHistory}
               onLoadOlder={loadOlder}
             />
-            {(sendError || session?.escalated) && (
+            {sendError && (
               <div className="px-4 py-2 bg-red-50 border-t border-red-100">
-                <p className="text-xs text-red-600">
-                  {session?.escalated
-                    ? "This conversation has been escalated."
-                    : sendError}
-                </p>
+                <p className="text-xs text-red-600">{sendError}</p>
               </div>
             )}
             <ChatInput
               onSend={sendMessage}
-              disabled={isTyping || Boolean(session?.escalated)}
+              disabled={chatDisabled}
+              placeholder="Type your message…"
+            />
+            <EscalationDialog
+              open={escalationOpen}
+              submitting={escalationSubmitting}
+              error={escalationError}
+              onSubmit={handleEscalationSubmit}
+              onClose={() => {
+                if (!escalationSubmitting) setEscalationOpen(false);
+              }}
             />
           </>
         )}

@@ -5,7 +5,11 @@ import type { Message } from "../api/types.js";
 const STREAM_CHARS_PER_TICK = 3;
 const STREAM_TICK_MS = 45;
 
-export function useChat(sessionId: string | null, categorySelected: boolean) {
+export function useChat(
+  sessionId: string | null,
+  categorySelected: boolean,
+  options?: { onEscalationSuggested?: () => void }
+) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -14,6 +18,11 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
   const [sendError, setSendError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const historyLoadedRef = useRef(false);
+  const onEscalationSuggestedRef = useRef(options?.onEscalationSuggested);
+
+  useEffect(() => {
+    onEscalationSuggestedRef.current = options?.onEscalationSuggested;
+  }, [options?.onEscalationSuggested]);
 
   const loadMessages = useCallback(
     async (cursor?: string) => {
@@ -80,6 +89,7 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
 
       const pendingRef = { current: "" };
       let streamDone = false;
+      let shouldEscalatePending = false;
       let finalMessageId = "";
       let drainInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -106,6 +116,10 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
         stopDrain();
         finalizeAssistant();
         setIsTyping(false);
+        if (shouldEscalatePending) {
+          shouldEscalatePending = false;
+          onEscalationSuggestedRef.current?.();
+        }
       };
 
       const drainPending = () => {
@@ -162,9 +176,10 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
               pendingRef.current += delta;
               startDrain();
             },
-            onEnd: ({ messageId }) => {
+            onEnd: ({ messageId, shouldEscalate }) => {
               streamDone = true;
               finalMessageId = messageId;
+              shouldEscalatePending = shouldEscalate;
               if (!drainInterval && pendingRef.current.length === 0) {
                 completeStream();
               }

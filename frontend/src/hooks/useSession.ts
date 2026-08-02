@@ -74,11 +74,19 @@ export function useSession() {
     [session]
   );
 
+  const refreshSession = useCallback(async () => {
+    if (!session?.id) return;
+
+    const { session: updated } = await getSession(session.id);
+    setSession(updated);
+  }, [session?.id]);
+
   return {
     session,
     loading,
     error,
     selectCategory,
+    refreshSession,
     retry: initSession,
   };
 }

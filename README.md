@@ -74,6 +74,7 @@ npm run db:seed      # seed admin, categories, mock data
 | `PATCH` | `/api/sessions/:id/category` | Set session category |
 | `GET` | `/api/chat/:id/messages` | Paginated message history |
 | `POST` | `/api/chat/:id/messages` | Send message (SSE stream) |
+| `POST` | `/api/sessions/:id/escalate` | Submit escalation (multipart: email, message, images) |
 
 ## Project Structure
 
@@ -97,7 +98,7 @@ This project is built incrementally. Each phase is a separate commit/PR:
 | 3 | Backend core APIs | ✅ Complete |
 | 4 | Frontend chat UI | ✅ Complete |
 | 5 | Azure OpenAI integration & semantic cache | ✅ Complete |
-| 6 | Escalation flow & Resend email | Pending |
+| 6 | Escalation flow & Resend email | ✅ Complete |
 | 7 | Order lookup & inventory integration | Pending |
 | 8 | Admin interface | Pending |
 

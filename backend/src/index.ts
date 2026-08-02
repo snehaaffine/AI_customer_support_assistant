@@ -1,10 +1,12 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { cleanupExpiredSessions } from "./lib/db-helpers.js";
+import { ensureUploadDir } from "./lib/upload.js";
 
 const app = createApp();
 
 async function start() {
+  ensureUploadDir();
   try {
     const removed = await cleanupExpiredSessions();
     if (removed > 0) {
