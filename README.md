@@ -92,7 +92,7 @@ This project is built incrementally. Each phase is a separate commit/PR:
 | 1 | Project scaffolding | ✅ Complete |
 | 2 | Database schema & Prisma | ✅ Complete |
 | 3 | Backend core APIs | ✅ Complete |
-| 4 | Frontend chat UI | Pending |
+| 4 | Frontend chat UI | ✅ Complete |
 | 5 | Claude integration & semantic cache | Pending |
 | 6 | Escalation flow & Resend email | Pending |
 | 7 | Order lookup & inventory integration | Pending |
