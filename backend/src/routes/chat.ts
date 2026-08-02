@@ -5,7 +5,7 @@ import { asyncHandler } from "../middleware/async-handler.js";
 import { requireSession } from "../middleware/session.js";
 import {
   ChatError,
-  generateStubResponse,
+  generateChatResponse,
   getMessages,
   saveAssistantMessage,
   saveUserMessage,
@@ -79,12 +79,21 @@ router.post(
 
       let assistantContent = "";
       const categoryLabel = session.category?.label;
+      const categorySlug = session.category?.slug;
 
       writeSseEvent(res, "message_start", {
         userMessageId: userMessage.id,
       });
 
-      for await (const chunk of generateStubResponse(content, categoryLabel)) {
+      const { stream, fromCache, shouldEscalate: escalate } =
+        await generateChatResponse(
+          session.id,
+          content,
+          categoryLabel,
+          categorySlug
+        );
+
+      for await (const chunk of stream) {
         assistantContent += chunk;
         writeSseEvent(res, "content_delta", { delta: chunk });
       }
@@ -96,8 +105,8 @@ router.post(
 
       writeSseEvent(res, "message_end", {
         messageId: assistantMessage.id,
-        fromCache: false,
-        shouldEscalate: false,
+        fromCache,
+        shouldEscalate: escalate,
       });
 
       endSse(res);

@@ -1,6 +1,6 @@
 # AI Customer Support Assistant
 
-An AI-powered customer support chatbot for e-commerce and retail, built with React 19, Express, PostgreSQL (pgvector), and the Claude API.
+An AI-powered customer support chatbot for e-commerce and retail, built with React 19, Express, PostgreSQL (pgvector), and Azure OpenAI.
 
 ## Stack
 
@@ -8,14 +8,14 @@ An AI-powered customer support chatbot for e-commerce and retail, built with Rea
 |-------|-----------|
 | Frontend | React 19, TypeScript 5, Vite, Tailwind CSS 4 |
 | Backend | Node.js, Express, Prisma, PostgreSQL + pgvector |
-| AI | Anthropic Claude API (Haiku-tier) |
+| AI | Azure OpenAI (gpt-4o-mini + embeddings) |
 | Email | Resend |
 
 ## Prerequisites
 
 - Node.js 20+ (24 recommended)
 - Docker & Docker Compose (for PostgreSQL)
-- Anthropic API key
+- Azure OpenAI API key and endpoint
 - Resend API key (needed from Phase 6 onward)
 
 ## Quick Start
@@ -41,7 +41,10 @@ cp backend/.env.example backend/.env
 
 Edit `backend/.env` and add your API keys when ready:
 
-- `ANTHROPIC_API_KEY` — required from Phase 5
+- `AZURE_OPENAI_API_KEY` — required from Phase 5
+- `AZURE_OPENAI_ENDPOINT` — your Azure OpenAI resource URL
+- `AZURE_OPENAI_CHAT_DEPLOYMENT` — chat model deployment name (e.g. `gpt-4o-mini`)
+- `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` — embedding deployment name (e.g. `text-embedding-3-small`)
 - `RESEND_API_KEY` — required from Phase 6
 
 ### 4. Run development servers
@@ -93,7 +96,7 @@ This project is built incrementally. Each phase is a separate commit/PR:
 | 2 | Database schema & Prisma | ✅ Complete |
 | 3 | Backend core APIs | ✅ Complete |
 | 4 | Frontend chat UI | ✅ Complete |
-| 5 | Claude integration & semantic cache | Pending |
+| 5 | Azure OpenAI integration & semantic cache | ✅ Complete |
 | 6 | Escalation flow & Resend email | Pending |
 | 7 | Order lookup & inventory integration | Pending |
 | 8 | Admin interface | Pending |

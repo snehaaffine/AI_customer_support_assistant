@@ -13,7 +13,21 @@ export const env = {
     "DATABASE_URL",
     "postgresql://postgres:postgres@localhost:5432/customer_support?schema=public"
   ),
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  azureOpenAiApiKey: process.env.AZURE_OPENAI_API_KEY ?? "",
+  azureOpenAiEndpoint: process.env.AZURE_OPENAI_ENDPOINT ?? "",
+  azureOpenAiApiVersion: optionalEnv(
+    "AZURE_OPENAI_API_VERSION",
+    "2024-10-21"
+  ),
+  azureOpenAiChatDeployment: optionalEnv(
+    "AZURE_OPENAI_CHAT_DEPLOYMENT",
+    "gpt-4o-mini"
+  ),
+  azureOpenAiEmbeddingDeployment: optionalEnv(
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+    "text-embedding-3-small"
+  ),
+  embeddingDimension: parseInt(optionalEnv("EMBEDDING_DIMENSION", "1024"), 10),
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   supportInboxEmail: optionalEnv("SUPPORT_INBOX_EMAIL", "support@yourstore.com"),
   fromEmail: optionalEnv("FROM_EMAIL", "noreply@yourstore.com"),
@@ -32,9 +46,12 @@ export const env = {
   isDev: optionalEnv("NODE_ENV", "development") === "development",
 };
 
-export function assertAnthropicKey(): void {
-  if (!env.anthropicApiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not set in .env");
+export function assertAzureOpenAiConfig(): void {
+  if (!env.azureOpenAiApiKey) {
+    throw new Error("AZURE_OPENAI_API_KEY is not set in .env");
+  }
+  if (!env.azureOpenAiEndpoint) {
+    throw new Error("AZURE_OPENAI_ENDPOINT is not set in .env");
   }
 }
 

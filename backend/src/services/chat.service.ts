@@ -1,6 +1,15 @@
 import { MessageRole } from "@prisma/client";
+import { getSystemConfig } from "../lib/db-helpers.js";
 import { prisma } from "../lib/prisma.js";
 import { sanitizeMessage } from "../lib/sanitize.js";
+import { streamChatCompletion } from "./ai.service.js";
+import {
+  findCachedAnswer,
+  isCacheableAnswer,
+  shouldBypassCache,
+  storeCachedAnswer,
+} from "./cache.service.js";
+import { shouldEscalate } from "./escalation.service.js";
 import { getSession, SessionError } from "./session.service.js";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -107,24 +116,86 @@ export async function saveAssistantMessage(sessionId: string, content: string) {
   });
 }
 
-/**
- * Placeholder response generator — replaced by Claude + cache in Phase 5.
- * Yields text chunks for SSE streaming.
- */
-export async function* generateStubResponse(
-  userMessage: string,
-  categoryLabel?: string
-): AsyncGenerator<string> {
-  const topic = categoryLabel ? ` about ${categoryLabel}` : "";
-  const text =
-    `Thanks for your message${topic}. I received: "${userMessage.slice(0, 120)}${userMessage.length > 120 ? "…" : ""}". ` +
-    `Full AI-powered responses will be enabled in the next phase. ` +
-    `For now, this confirms the chat streaming pipeline is working.`;
+export interface ChatGenerationResult {
+  stream: AsyncGenerator<string>;
+  fromCache: boolean;
+  shouldEscalate: boolean;
+}
 
-  const words = text.split(" ");
-  for (const word of words) {
-    yield word + " ";
+const MAX_HISTORY_MESSAGES = 20;
+
+export async function generateChatResponse(
+  sessionId: string,
+  userMessage: string,
+  categoryLabel?: string,
+  categorySlug?: string
+): Promise<ChatGenerationResult> {
+  const config = await getSystemConfig();
+  const escalate = await shouldEscalate({
+    message: userMessage,
+    category: categorySlug ? { slug: categorySlug } : null,
+  });
+
+  const bypassCache = shouldBypassCache(userMessage);
+
+  if (!bypassCache) {
+    const cached = await findCachedAnswer(userMessage, config.promptVersion);
+    if (cached) {
+      const answer = cached;
+      async function* cachedStream() {
+        yield answer;
+      }
+      return { stream: cachedStream(), fromCache: true, shouldEscalate: escalate };
+    }
   }
+
+  const history = await prisma.message.findMany({
+    where: { sessionId },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: MAX_HISTORY_MESSAGES,
+    select: { role: true, content: true },
+  });
+
+  const messages = history.map((m) => ({
+    role: m.role === MessageRole.ASSISTANT ? ("assistant" as const) : ("user" as const),
+    content: m.content,
+  }));
+
+  const generator = streamChatCompletion(
+    config.systemPrompt,
+    messages,
+    categoryLabel
+  );
+
+  if (bypassCache) {
+    return { stream: generator, fromCache: false, shouldEscalate: escalate };
+  }
+
+  async function* cachingStream() {
+    let fullResponse = "";
+    for await (const chunk of generator) {
+      fullResponse += chunk;
+      yield chunk;
+    }
+
+    if (
+      fullResponse.trim() &&
+      isCacheableAnswer(fullResponse) &&
+      !shouldBypassCache(userMessage)
+    ) {
+      try {
+        await storeCachedAnswer(
+          userMessage,
+          fullResponse,
+          config.promptVersion
+        );
+      } catch (err) {
+        console.error("Failed to store cached response:", err);
+      }
+    }
+  }
+
+  return { stream: cachingStream(), fromCache: false, shouldEscalate: escalate };
 }
 
 export class ChatError extends Error {
