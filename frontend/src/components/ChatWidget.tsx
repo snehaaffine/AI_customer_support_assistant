@@ -43,9 +43,7 @@ export default function ChatWidget() {
     hasMore,
     loadOlder,
     sendMessage,
-  } = useChat(session?.id ?? null, categorySelected, {
-    onEscalationSuggested: openEscalation,
-  });
+  } = useChat(session?.id ?? null, categorySelected);
 
   useEffect(() => {
     fetchCategories()
@@ -216,6 +214,7 @@ export default function ChatWidget() {
               hasMore={hasMore}
               loadingHistory={loadingHistory}
               onLoadOlder={loadOlder}
+              showEscalateActions={false}
             />
             <div className="shrink-0 px-4 py-3 bg-white border-t border-gray-200 text-center">
               <p className="text-sm text-gray-600">
@@ -231,6 +230,8 @@ export default function ChatWidget() {
               hasMore={hasMore}
               loadingHistory={loadingHistory}
               onLoadOlder={loadOlder}
+              onEscalate={openEscalation}
+              showEscalateActions={!session?.escalated}
             />
             {sendError && (
               <div className="px-4 py-2 bg-red-50 border-t border-red-100">

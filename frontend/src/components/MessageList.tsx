@@ -9,6 +9,8 @@ interface MessageListProps {
   hasMore: boolean;
   loadingHistory: boolean;
   onLoadOlder: () => void;
+  onEscalate?: () => void;
+  showEscalateActions?: boolean;
 }
 
 export default function MessageList({
@@ -17,6 +19,8 @@ export default function MessageList({
   hasMore,
   loadingHistory,
   onLoadOlder,
+  onEscalate,
+  showEscalateActions = true,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,7 +87,24 @@ export default function MessageList({
       )}
 
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
+        <div key={message.id} className="space-y-2">
+          <MessageBubble message={message} />
+          {showEscalateActions &&
+            message.offerEscalation &&
+            !message.streaming &&
+            message.role === "assistant" &&
+            onEscalate && (
+              <div className="flex justify-start pl-1">
+                <button
+                  type="button"
+                  onClick={onEscalate}
+                  className="rounded-xl bg-brand-600 text-white px-4 py-2 text-xs font-medium hover:bg-brand-700 transition-colors"
+                >
+                  Contact support by email
+                </button>
+              </div>
+            )}
+        </div>
       ))}
 
       {showTyping && <TypingIndicator />}

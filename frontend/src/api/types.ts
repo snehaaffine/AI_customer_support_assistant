@@ -20,6 +20,7 @@ export interface Message {
   content: string;
   createdAt: string;
   streaming?: boolean;
+  offerEscalation?: boolean;
 }
 
 export interface PaginatedMessages {

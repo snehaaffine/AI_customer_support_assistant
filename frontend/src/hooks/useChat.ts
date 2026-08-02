@@ -5,11 +5,7 @@ import type { Message } from "../api/types.js";
 const STREAM_CHARS_PER_TICK = 3;
 const STREAM_TICK_MS = 45;
 
-export function useChat(
-  sessionId: string | null,
-  categorySelected: boolean,
-  options?: { onEscalationSuggested?: () => void }
-) {
+export function useChat(sessionId: string | null, categorySelected: boolean) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -18,11 +14,6 @@ export function useChat(
   const [sendError, setSendError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const historyLoadedRef = useRef(false);
-  const onEscalationSuggestedRef = useRef(options?.onEscalationSuggested);
-
-  useEffect(() => {
-    onEscalationSuggestedRef.current = options?.onEscalationSuggested;
-  }, [options?.onEscalationSuggested]);
 
   const loadMessages = useCallback(
     async (cursor?: string) => {
@@ -103,10 +94,18 @@ export function useChat(
       const finalizeAssistant = () => {
         if (!assistantId) return;
 
+        const offerEscalation = shouldEscalatePending;
+        shouldEscalatePending = false;
+
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
-              ? { ...m, id: finalMessageId || m.id, streaming: false }
+              ? {
+                  ...m,
+                  id: finalMessageId || m.id,
+                  streaming: false,
+                  ...(offerEscalation ? { offerEscalation: true } : {}),
+                }
               : m
           )
         );
@@ -116,10 +115,6 @@ export function useChat(
         stopDrain();
         finalizeAssistant();
         setIsTyping(false);
-        if (shouldEscalatePending) {
-          shouldEscalatePending = false;
-          onEscalationSuggestedRef.current?.();
-        }
       };
 
       const drainPending = () => {
