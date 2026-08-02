@@ -49,11 +49,9 @@ export default function MessageList({
     }
   }, [messages]);
 
+  const lastMessage = messages[messages.length - 1];
   const showTyping =
-    isTyping &&
-    (messages.length === 0 ||
-      !messages[messages.length - 1]?.streaming ||
-      messages[messages.length - 1]?.content === "");
+    isTyping && (!lastMessage || lastMessage.role === "user");
 
   return (
     <div

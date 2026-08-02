@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchMessages, sendMessageStream } from "../api/chat.js";
 import type { Message } from "../api/types.js";
 
+const STREAM_CHARS_PER_TICK = 3;
+const STREAM_TICK_MS = 45;
+
 export function useChat(sessionId: string | null, categorySelected: boolean) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -60,7 +63,7 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
       setIsTyping(true);
 
       const tempUserId = `temp-user-${Date.now()}`;
-      const tempAssistantId = `temp-assistant-${Date.now()}`;
+      let assistantId: string | null = null;
 
       const userMessage: Message = {
         id: tempUserId,
@@ -69,19 +72,79 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
         createdAt: new Date().toISOString(),
       };
 
-      const assistantMessage: Message = {
-        id: tempAssistantId,
-        role: "assistant",
-        content: "",
-        createdAt: new Date().toISOString(),
-        streaming: true,
-      };
-
-      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      setMessages((prev) => [...prev, userMessage]);
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+
+      const pendingRef = { current: "" };
+      let streamDone = false;
+      let finalMessageId = "";
+      let drainInterval: ReturnType<typeof setInterval> | null = null;
+
+      const stopDrain = () => {
+        if (drainInterval) {
+          clearInterval(drainInterval);
+          drainInterval = null;
+        }
+      };
+
+      const finalizeAssistant = () => {
+        if (!assistantId) return;
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, id: finalMessageId || m.id, streaming: false }
+              : m
+          )
+        );
+      };
+
+      const completeStream = () => {
+        stopDrain();
+        finalizeAssistant();
+        setIsTyping(false);
+      };
+
+      const drainPending = () => {
+        if (pendingRef.current.length === 0) {
+          if (streamDone) {
+            completeStream();
+          }
+          return;
+        }
+
+        const chunk = pendingRef.current.slice(0, STREAM_CHARS_PER_TICK);
+        pendingRef.current = pendingRef.current.slice(STREAM_CHARS_PER_TICK);
+
+        if (!assistantId) {
+          assistantId = `temp-assistant-${Date.now()}`;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: assistantId!,
+              role: "assistant",
+              content: chunk,
+              createdAt: new Date().toISOString(),
+              streaming: true,
+            },
+          ]);
+          return;
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, content: m.content + chunk } : m
+          )
+        );
+      };
+
+      const startDrain = () => {
+        if (drainInterval) return;
+        drainInterval = setInterval(drainPending, STREAM_TICK_MS);
+      };
 
       try {
         await sendMessageStream(
@@ -96,44 +159,42 @@ export function useChat(sessionId: string | null, categorySelected: boolean) {
               );
             },
             onDelta: (delta) => {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempAssistantId
-                    ? { ...m, content: m.content + delta }
-                    : m
-                )
-              );
+              pendingRef.current += delta;
+              startDrain();
             },
             onEnd: ({ messageId }) => {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempAssistantId
-                    ? { ...m, id: messageId, streaming: false }
-                    : m
-                )
-              );
+              streamDone = true;
+              finalMessageId = messageId;
+              if (!drainInterval && pendingRef.current.length === 0) {
+                completeStream();
+              }
             },
             onError: (error) => {
+              stopDrain();
               setSendError(error);
-              setMessages((prev) =>
-                prev.filter(
-                  (m) => m.id !== tempAssistantId || m.content.length > 0
-                ).map((m) =>
-                  m.id === tempAssistantId
-                    ? { ...m, streaming: false }
-                    : m
-                )
-              );
+              if (assistantId) {
+                setMessages((prev) =>
+                  prev
+                    .filter((m) => m.id !== assistantId || m.content.length > 0)
+                    .map((m) =>
+                      m.id === assistantId ? { ...m, streaming: false } : m
+                    )
+                );
+              }
+              setIsTyping(false);
             },
           },
           controller.signal
         );
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
+        stopDrain();
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setIsTyping(false);
+          return;
+        }
         setSendError(
           err instanceof Error ? err.message : "Failed to send message"
         );
-      } finally {
         setIsTyping(false);
       }
     },

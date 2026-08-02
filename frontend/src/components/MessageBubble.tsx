@@ -27,9 +27,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
       >
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
           {message.content}
-          {message.streaming && (
-            <span className="inline-block w-1.5 h-4 ml-0.5 bg-current opacity-60 animate-pulse align-middle" />
-          )}
         </p>
         <p
           className={`text-[10px] mt-1 ${isUser ? "text-gray-500" : "text-gray-400"}`}
