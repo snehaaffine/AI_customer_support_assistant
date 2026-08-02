@@ -50,6 +50,13 @@ Edit `backend/.env` and add your API keys when ready:
 npm run dev
 ```
 
+### Database setup (after Docker is running)
+
+```bash
+npm run db:migrate   # apply migrations
+npm run db:seed      # seed admin, categories, mock data
+```
+
 - Frontend: http://localhost:5173
 - Backend: http://localhost:3001
 - Health check: http://localhost:3001/api/health
@@ -72,7 +79,7 @@ This project is built incrementally. Each phase is a separate commit/PR:
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 1 | Project scaffolding | ✅ Complete |
-| 2 | Database schema & Prisma | Pending |
+| 2 | Database schema & Prisma | ✅ Complete |
 | 3 | Backend core APIs | Pending |
 | 4 | Frontend chat UI | Pending |
 | 5 | Claude integration & semantic cache | Pending |

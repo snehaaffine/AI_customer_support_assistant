@@ -9,4 +9,159 @@ datasource db {
   extensions = [vector]
 }
 
-// Full schema will be defined in Phase 2
+// ─── Chat sessions & messages ───────────────────────────────────────────────
+
+model Session {
+  id                String        @id
+  categoryId        String?
+  category          ChatCategory? @relation(fields: [categoryId], references: [id])
+  orderFailureCount Int           @default(0)
+  escalated         Boolean       @default(false)
+  expiresAt         DateTime
+  createdAt         DateTime      @default(now())
+  messages          Message[]
+  escalations       Escalation[]
+
+  @@index([expiresAt])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  sessionId String
+  session   Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      MessageRole
+  content   String      @db.Text
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model ChatCategory {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  label       String
+  description String?
+  sortOrder   Int       @default(0)
+  enabled     Boolean   @default(true)
+  sessions    Session[]
+}
+
+// ─── Admin & configuration ───────────────────────────────────────────────────
+
+model Admin {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model SystemConfig {
+  id            Int      @id @default(1)
+  systemPrompt  String   @db.Text
+  promptVersion Int      @default(1)
+  updatedAt     DateTime @updatedAt
+}
+
+enum EscalationRuleType {
+  KEYWORD
+  SENTIMENT
+  FAILED_ATTEMPTS
+  EXPLICIT_REQUEST
+  CATEGORY
+}
+
+model EscalationRule {
+  id        String             @id @default(uuid())
+  name      String
+  type      EscalationRuleType
+  config    Json
+  enabled   Boolean            @default(true)
+  priority  Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Escalation {
+  id            String   @id @default(uuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  customerEmail String
+  message       String   @db.Text
+  imageUrls     String[]
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+// ─── Semantic response cache (pgvector) ──────────────────────────────────────
+
+model ResponseCache {
+  id                String                      @id @default(uuid())
+  questionText      String
+  questionEmbedding Unsupported("vector(1024)")
+  answerText        String                      @db.Text
+  promptVersion     Int
+  createdAt         DateTime                    @default(now())
+
+  @@index([promptVersion])
+}
+
+// ─── Mock inventory system ───────────────────────────────────────────────────
+
+model Product {
+  id          String           @id @default(uuid())
+  sku         String           @unique
+  name        String
+  description String?
+  price       Decimal          @db.Decimal(10, 2)
+  variants    ProductVariant[]
+}
+
+model ProductVariant {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  stock     Int     @default(0)
+
+  @@unique([productId, size])
+}
+
+// ─── Mock order management system ──────────────────────────────────────────────
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  orderNumber    String      @unique
+  customerEmail  String
+  status         OrderStatus @default(PENDING)
+  items          Json
+  trackingNumber String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime    @default(now())
+
+  @@index([customerEmail])
+}
+
+model OrderLookupLockout {
+  orderNumber    String    @id
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  updatedAt      DateTime  @updatedAt
+}
