@@ -19,8 +19,8 @@ async function start() {
     );
   }
 
-  app.listen(env.port, () => {
-    console.log(`Server running on http://localhost:${env.port}`);
+  app.listen(env.port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${env.port}`);
     console.log(`Environment: ${env.nodeEnv}`);
   });
 }

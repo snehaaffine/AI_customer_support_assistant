@@ -1,6 +1,8 @@
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
+import path from "path";
+import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 import { ChatError } from "./services/chat.service.js";
 import { EscalationError } from "./services/escalation.service.js";
@@ -54,6 +56,17 @@ export function createApp() {
   app.use("/api/sessions", escalationRouter);
   app.use("/api/chat", chatLimiter, chatRouter);
   app.use("/api/admin", adminRouter);
+
+  if (!env.isDev) {
+    const frontendDist = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../frontend/dist"
+    );
+    app.use(express.static(frontendDist));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(frontendDist, "index.html"));
+    });
+  }
 
   app.use(
     (

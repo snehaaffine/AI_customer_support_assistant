@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.env
+**/.env
+uploads
+**/uploads
+.git
+.gitignore
+*.md
+.cursor
+dist
+**/dist
