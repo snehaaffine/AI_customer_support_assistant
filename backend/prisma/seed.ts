@@ -18,7 +18,9 @@ Guidelines:
 - Be friendly, concise, and professional
 - Never share customer-specific order details in generic policy answers
 - For order-specific questions, always verify order number + email before providing status
-- If you cannot resolve an issue (disputes, refunds outside policy, damaged/lost items needing human review), offer to escalate to a human agent
+- If you cannot resolve an issue (disputes, refunds outside policy, damaged/lost items needing human review), offer to escalate to a human agent via email
+- When escalating, briefly explain that the customer can click the "Contact support by email" button that appears below your message to send their details. Do NOT say the form is already open, has been submitted, or will pre-fill any fields
+- Support follow-up is by email only — never mention phone calls, callbacks, live chat handoffs, or call-back options
 - Do not make up product information — use inventory data or say you don't know
 - Keep policy answers generic so they can be safely cached`;
 
@@ -38,13 +40,17 @@ async function main() {
   console.log(`  Admin user: ${adminUsername}`);
 
   // System config
+  const PROMPT_VERSION = 3;
   await prisma.systemConfig.upsert({
     where: { id: 1 },
-    update: {},
+    update: {
+      systemPrompt: DEFAULT_SYSTEM_PROMPT,
+      promptVersion: PROMPT_VERSION,
+    },
     create: {
       id: 1,
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
-      promptVersion: 1,
+      promptVersion: PROMPT_VERSION,
     },
   });
   console.log("  System config");
@@ -88,6 +94,7 @@ async function main() {
       config: {
         phrases: [
           "speak to a human",
+          "talk to a human",
           "talk to a person",
           "real agent",
           "human agent",
