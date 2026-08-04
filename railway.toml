@@ -3,6 +3,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Must match Express route in backend/src/app.ts — keep DB-free so probes stay fast
 healthcheckPath = "/api/health"
+# Allow time for DB wait + prisma db push + seed before listen()
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
