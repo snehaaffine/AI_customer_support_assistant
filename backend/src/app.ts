@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
@@ -57,11 +58,14 @@ export function createApp() {
   app.use("/api/chat", chatLimiter, chatRouter);
   app.use("/api/admin", adminRouter);
 
-  if (!env.isDev) {
-    const frontendDist = path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      "../../frontend/dist"
-    );
+  // Serve the built SPA whenever dist exists (Docker/Railway). Do not gate on
+  // NODE_ENV — Railway may leave NODE_ENV=development and otherwise return
+  // "Cannot GET /" even though /api/health works.
+  const frontendDist = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../frontend/dist"
+  );
+  if (fs.existsSync(path.join(frontendDist, "index.html"))) {
     app.use(express.static(frontendDist));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(frontendDist, "index.html"));
