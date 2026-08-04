@@ -21,13 +21,18 @@ FROM node:24-alpine AS production
 RUN apk add --no-cache openssl
 WORKDIR /app/backend
 ENV NODE_ENV=production
+ENV PATH="/app/backend/node_modules/.bin:${PATH}"
 
+COPY --from=backend-build /app/backend/package.json ./package.json
 COPY --from=backend-build /app/backend/node_modules ./node_modules
 COPY --from=backend-build /app/backend/dist ./dist
-COPY backend/prisma ./prisma
+COPY --from=backend-build /app/backend/prisma ./prisma
 COPY backend/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 COPY --from=frontend-build /app/frontend/dist ../frontend/dist
 
 RUN chmod +x ./scripts/docker-entrypoint.sh
+
+# Railway injects PORT; default matches local/.env.example
+EXPOSE 3001
 
 CMD ["./scripts/docker-entrypoint.sh"]
